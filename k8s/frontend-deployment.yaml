@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flight-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flight-frontend
+  template:
+    metadata:
+      labels:
+        app: flight-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: pannagajm2004/flight-frontend:latest
+        ports:
+        - containerPort: 5000
