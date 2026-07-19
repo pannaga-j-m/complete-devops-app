@@ -7,28 +7,28 @@ pipeline {
             steps {
                 sh 'git --version'
                 sh 'docker --version'
-                sh 'docker-compose --version'
+                sh 'docker compose --version'
             }
         }
 
         stage('Build Docker Images') {
             steps {
                 echo 'Building Docker images...'
-                sh 'docker-compose build'
+                sh 'docker compose build'
             }
         }
 
         stage('Stop Existing Containers') {
             steps {
                 echo 'Stopping old containers...'
-                sh 'docker-compose down || true'
+                sh 'docker compose down || true'
             }
         }
 
         stage('Deploy Application') {
             steps {
                 echo 'Starting containers...'
-                sh 'docker-compose up -d'
+                sh 'docker compose up -d'
             }
         }
 
