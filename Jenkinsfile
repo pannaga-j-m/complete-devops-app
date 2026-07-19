@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = "YOUR_DOCKERHUB_USERNAME"
+        DOCKERHUB_USER = "pannagajm2004"
         FRONTEND_IMAGE = "${DOCKERHUB_USER}/flight-frontend"
         BACKEND_IMAGE  = "${DOCKERHUB_USER}/flight-backend"
     }
@@ -60,7 +60,7 @@ pipeline {
 
         stage('Docker Hub Login') {
             steps {
-                withCredentials([pannagajm2004(
+                withCredentials([usernamePassword(
                     credentialsId: 'docker',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
