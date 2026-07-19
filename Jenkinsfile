@@ -5,13 +5,13 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                sh 'docker build -t flight-frontend ./frontend'
+                sh 'docker build -t flight-frontend ./Frontend'
             }
         }
 
         stage('Build Backend') {
             steps {
-                sh 'docker build -t flight-backend ./backend'
+                sh 'docker build -t flight-backend ./Backend'
             }
         }
 
