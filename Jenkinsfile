@@ -3,58 +3,41 @@ pipeline {
 
     stages {
 
-        stage('Verify Tools') {
+        stage('Build Frontend') {
             steps {
-                sh 'git --version'
-                sh 'docker --version'
-                sh 'docker compose --version'
+                sh 'docker build -t flight-frontend ./frontend'
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Build Backend') {
             steps {
-                echo 'Building Docker images...'
-                sh 'docker compose build'
+                sh 'docker build -t flight-backend ./backend'
             }
         }
 
-        stage('Stop Existing Containers') {
+        stage('Stop Old Containers') {
             steps {
-                echo 'Stopping old containers...'
-                sh 'docker compose down || true'
+                sh 'docker rm -f flight-frontend || true'
+                sh 'docker rm -f flight-backend || true'
             }
         }
 
-        stage('Deploy Application') {
+        stage('Run Backend') {
             steps {
-                echo 'Starting containers...'
-                sh 'docker compose up -d'
+                sh 'docker run -d --name flight-backend -p 8080:8080 flight-backend'
             }
         }
 
-        stage('Verify Deployment') {
+        stage('Run Frontend') {
             steps {
-                echo 'Running containers:'
+                sh 'docker run -d --name flight-frontend -p 5000:5000 flight-frontend'
+            }
+        }
+
+        stage('Verify') {
+            steps {
                 sh 'docker ps'
             }
-        }
-    }
-
-    post {
-        success {
-            echo '======================================='
-            echo 'Application deployed successfully!'
-            echo '======================================='
-        }
-
-        failure {
-            echo '======================================='
-            echo 'Deployment failed!'
-            echo '======================================='
-        }
-
-        always {
-            echo 'Pipeline execution completed.'
         }
     }
 }
