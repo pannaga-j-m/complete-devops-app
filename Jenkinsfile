@@ -2,81 +2,60 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = "pannagajm2004"
-        FRONTEND_IMAGE = "${DOCKERHUB_USER}/flight-frontend"
-        BACKEND_IMAGE  = "${DOCKERHUB_USER}/flight-backend"
+        AWS_REGION = 'ap-south-1'
+        AWS_ACCOUNT_ID = '<AWS_ACCOUNT_ID>'
+
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+        FRONTEND_REPO = "flight-frontend"
+        BACKEND_REPO  = "flight-backend"
+
+        CLUSTER_NAME = "demo-cluster"
+
+        FRONTEND_IMAGE = "${ECR_REGISTRY}/${FRONTEND_REPO}:latest"
+        BACKEND_IMAGE  = "${ECR_REGISTRY}/${BACKEND_REPO}:latest"
     }
 
     stages {
 
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Build Frontend') {
             steps {
-                sh 'docker build -t flight-frontend ./Frontend'
+                sh '''
+                docker build -t flight-frontend ./Frontend
+                '''
             }
         }
 
         stage('Build Backend') {
             steps {
-                sh 'docker build -t flight-backend ./Backend'
-            }
-        }
-
-        stage('Stop & Remove Old Containers') {
-            steps {
                 sh '''
-                docker rm -f flight-frontend || true
-                docker rm -f flight-backend || true
+                docker build -t flight-backend ./Backend
                 '''
             }
         }
 
-        stage('Run Backend') {
+        stage('Login to Amazon ECR') {
             steps {
                 sh '''
-                docker run -d \
-                  --name flight-backend \
-                  -p 3000:3000 \
-                  flight-backend
+                aws ecr get-login-password --region $AWS_REGION | \
+                docker login \
+                --username AWS \
+                --password-stdin $ECR_REGISTRY
                 '''
-            }
-        }
-
-        stage('Run Frontend') {
-            steps {
-                sh '''
-                docker run -d \
-                  --name flight-frontend \
-                  -p 5000:5000 \
-                  flight-frontend
-                '''
-            }
-        }
-
-        stage('Verify Containers') {
-            steps {
-                sh 'docker ps'
-            }
-        }
-
-        stage('Docker Hub Login') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh '''
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    '''
-                }
             }
         }
 
         stage('Tag Images') {
             steps {
                 sh '''
-                docker tag flight-frontend ${FRONTEND_IMAGE}:latest
-                docker tag flight-backend ${BACKEND_IMAGE}:latest
+                docker tag flight-frontend:latest $FRONTEND_IMAGE
+                docker tag flight-backend:latest $BACKEND_IMAGE
                 '''
             }
         }
@@ -84,8 +63,39 @@ pipeline {
         stage('Push Images') {
             steps {
                 sh '''
-                docker push ${FRONTEND_IMAGE}:latest
-                docker push ${BACKEND_IMAGE}:latest
+                docker push $FRONTEND_IMAGE
+                docker push $BACKEND_IMAGE
+                '''
+            }
+        }
+
+        stage('Configure kubectl') {
+            steps {
+                sh '''
+                aws eks update-kubeconfig \
+                  --region $AWS_REGION \
+                  --name $CLUSTER_NAME
+                '''
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                sh '''
+                kubectl apply -f k8s/
+
+                kubectl rollout restart deployment flight-frontend
+                kubectl rollout restart deployment flight-backend
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                kubectl get nodes
+                kubectl get pods
+                kubectl get svc
                 '''
             }
         }
@@ -93,15 +103,15 @@ pipeline {
 
     post {
         always {
-            sh 'docker logout || true'
+            sh 'docker logout $ECR_REGISTRY || true'
         }
 
         success {
-            echo 'Pipeline completed successfully.'
+            echo 'Pipeline completed successfully!'
         }
 
         failure {
-            echo 'Pipeline failed.'
+            echo 'Pipeline failed!'
         }
     }
 }
