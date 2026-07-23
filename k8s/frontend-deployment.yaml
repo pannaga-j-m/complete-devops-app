@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: pannagajm2004/flight-frontend:latest
+        image: 603433801149.dkr.ecr.ap-south-1.amazonaws.com/flight-frontend:latest
         ports:
         - containerPort: 5000
